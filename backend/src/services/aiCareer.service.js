@@ -74,6 +74,28 @@ const getOpenAIModel = () => process.env.OPENAI_MODEL ?? DEFAULT_OPENAI_MODEL;
 const uniqueStrings = (values) =>
   Array.from(new Set(values.map((value) => String(value).trim()).filter(Boolean)));
 
+const metadataKeywords = new Set([
+  "about",
+  "analytics",
+  "benefits",
+  "bengaluru",
+  "brightmetrics",
+  "company",
+  "compensation",
+  "experience",
+  "hybrid",
+  "india",
+  "junior",
+  "location",
+  "lpa",
+  "remote",
+  "role",
+  "salary",
+  "skills",
+  "year",
+  "years",
+]);
+
 const extractKeywords = (text) => {
   const words = String(text)
     .toLowerCase()
@@ -99,34 +121,105 @@ const extractKeywords = (text) => {
     "your",
     "job",
     "role",
+    "company",
+    "location",
+    "salary",
+    "benefits",
+    "experience",
+    "responsibilities",
+    "required",
+    "preferred",
   ]);
 
-  return uniqueStrings(words.filter((word) => !stopWords.has(word))).slice(0, 30);
+  return uniqueStrings(
+    words.filter((word) => !stopWords.has(word) && !metadataKeywords.has(word))
+  ).slice(0, 30);
 };
 
 const commonSkills = [
-  "javascript",
-  "react",
-  "node.js",
-  "express",
-  "mongodb",
-  "mongoose",
-  "jwt",
-  "api",
-  "testing",
-  "aws",
-  "docker",
-  "sql",
-  "python",
-  "java",
-  "css",
-  "html",
+  { name: "JavaScript", terms: ["javascript", "js"] },
+  { name: "TypeScript", terms: ["typescript"] },
+  { name: "React", terms: ["react", "react.js"] },
+  { name: "Node.js", terms: ["node.js", "nodejs", "node"] },
+  { name: "Express", terms: ["express", "express.js"] },
+  { name: "MongoDB", terms: ["mongodb", "mongo"] },
+  { name: "Mongoose", terms: ["mongoose"] },
+  { name: "JWT", terms: ["jwt", "json web token"] },
+  { name: "REST APIs", terms: ["rest api", "rest apis", "api", "apis"] },
+  { name: "Testing", terms: ["unit testing", "automated testing", "test cases", "jest", "cypress", "playwright"] },
+  { name: "AWS", terms: ["aws", "amazon web services"] },
+  { name: "Docker", terms: ["docker"] },
+  { name: "SQL", terms: ["sql", "mysql", "postgresql", "postgres"] },
+  { name: "Python", terms: ["python"] },
+  { name: "Java", terms: ["java"] },
+  { name: "CSS", terms: ["css"] },
+  { name: "HTML", terms: ["html"] },
+  { name: "Excel", terms: ["excel", "spreadsheets"] },
+  { name: "Pandas", terms: ["pandas"] },
+  { name: "Power BI", terms: ["power bi", "powerbi"] },
+  { name: "Tableau", terms: ["tableau"] },
+  { name: "Statistics", terms: ["statistics", "statistical"] },
+  { name: "A/B Testing", terms: ["a/b testing", "ab testing"] },
+  { name: "Google Analytics", terms: ["google analytics", "ga4"] },
+  { name: "Data Cleaning", terms: ["data cleaning", "clean raw data"] },
+  { name: "Data Visualization", terms: ["data visualization", "visualization", "dashboards"] },
+  { name: "Figma", terms: ["figma"] },
+  { name: "Wireframing", terms: ["wireframing", "wireframes"] },
+  { name: "Prototyping", terms: ["prototyping", "prototype"] },
+  { name: "User Research", terms: ["user research"] },
+  { name: "Linux", terms: ["linux"] },
+  { name: "CI/CD", terms: ["ci/cd", "ci cd", "github actions"] },
+  { name: "Kubernetes", terms: ["kubernetes", "k8s"] },
+  { name: "Terraform", terms: ["terraform"] },
+  { name: "Machine Learning", terms: ["machine learning", "ml"] },
+  { name: "TensorFlow", terms: ["tensorflow"] },
+  { name: "Scikit-learn", terms: ["scikit-learn", "sklearn"] },
+  { name: "NLP", terms: ["nlp", "natural language processing"] },
+  { name: "RAG", terms: ["rag", "retrieval augmented generation"] },
 ];
 
 const detectSkills = (text) => {
   const lower = String(text).toLowerCase();
-  return commonSkills.filter((skill) => lower.includes(skill));
+  return commonSkills
+    .filter((skill) => skill.terms.some((term) => lower.includes(term)))
+    .map((skill) => skill.name);
 };
+
+const calculateKeywordCoverage = (resumeText, jobDescription) => {
+  const resumeLower = String(resumeText).toLowerCase();
+  const keywords = extractKeywords(jobDescription).slice(0, 12);
+  const matchedKeywords = keywords.filter((keyword) => resumeLower.includes(keyword));
+
+  return {
+    keywords,
+    matchedKeywords,
+    ratio: keywords.length ? matchedKeywords.length / keywords.length : 0,
+  };
+};
+
+const detectRoleFamily = (text) => {
+  const lower = String(text).toLowerCase();
+
+  if (/(data analyst|business analyst|analytics|power bi|tableau|pandas|excel|sql)/i.test(lower)) {
+    return "data";
+  }
+  if (/(frontend|backend|full stack|full-stack|mern|react|node|express|mongodb|developer|engineer)/i.test(lower)) {
+    return "software";
+  }
+  if (/(designer|ui\/ux|ux|figma|wireframe|prototype)/i.test(lower)) {
+    return "design";
+  }
+  if (/(devops|docker|kubernetes|terraform|ci\/cd|aws|linux)/i.test(lower)) {
+    return "devops";
+  }
+  if (/(machine learning|ml engineer|ai engineer|tensorflow|scikit|nlp|rag)/i.test(lower)) {
+    return "ai-ml";
+  }
+
+  return "general";
+};
+
+const clampScore = (value) => Math.max(0, Math.min(100, Math.round(value)));
 
 const makeUsageReporter = (feature, onUsage) => async (status, usage, errorMessage) => {
   if (typeof onUsage !== "function") {
@@ -194,16 +287,28 @@ export const analyzeResume = async ({ resumeText, targetRole, jobDescription }, 
     onUsage: options.onUsage,
     fallback: () => {
       const resumeSkills = detectSkills(resumeText);
-      const jobKeywords = extractKeywords(jobDescription || targetRole || "");
-      const missingSkills = jobKeywords
+      const jobSkills = detectSkills(jobDescription || targetRole || "");
+      const keywordCoverage = calculateKeywordCoverage(
+        resumeText,
+        jobDescription || targetRole || ""
+      );
+      const missingSkills = jobSkills
+        .filter((skill) => !resumeSkills.includes(skill))
+        .slice(0, 8);
+      const missingKeywords = keywordCoverage.keywords
         .filter((keyword) => !resumeText.toLowerCase().includes(keyword))
         .slice(0, 8);
-      const atsScore = Math.max(35, Math.min(85, 55 + resumeSkills.length * 4 - missingSkills.length * 2));
+      const skillCoverage = jobSkills.length
+        ? (jobSkills.length - missingSkills.length) / jobSkills.length
+        : Math.min(resumeSkills.length / 8, 1);
+      const atsScore = clampScore(
+        35 + skillCoverage * 35 + keywordCoverage.ratio * 20 + Math.min(resumeSkills.length, 8)
+      );
 
       return {
         atsScore,
         resumeSummary: "Resume analyzed with local heuristics. Add a target job description for sharper recommendations.",
-        missingKeywords: missingSkills,
+        missingKeywords,
         missingSkills,
         weakSections: resumeText.length < 1200 ? ["Detail and impact depth"] : ["Role-specific keyword alignment"],
         strongSections: resumeSkills.length > 0 ? ["Technical skills"] : ["Baseline professional experience"],
@@ -228,9 +333,19 @@ export const matchResumeToJob = async ({ resumeText, jobDescription }, options =
       const jobSkills = detectSkills(jobDescription);
       const matchingSkills = jobSkills.filter((skill) => resumeSkills.includes(skill));
       const missingSkills = jobSkills.filter((skill) => !resumeSkills.includes(skill));
-      const matchPercentage = jobSkills.length
-        ? Math.round((matchingSkills.length / jobSkills.length) * 100)
-        : 50;
+      const keywordCoverage = calculateKeywordCoverage(resumeText, jobDescription);
+      const resumeFamily = detectRoleFamily(resumeText);
+      const jobFamily = detectRoleFamily(jobDescription);
+      const skillCoverage = jobSkills.length ? matchingSkills.length / jobSkills.length : 0;
+      const roleAlignment =
+        resumeFamily === "general" || jobFamily === "general"
+          ? 0.5
+          : resumeFamily === jobFamily
+            ? 1
+            : 0.25;
+      const baseScore =
+        skillCoverage * 65 + keywordCoverage.ratio * 20 + roleAlignment * 15;
+      const matchPercentage = clampScore(baseScore);
 
       return {
         matchPercentage,
@@ -239,7 +354,9 @@ export const matchResumeToJob = async ({ resumeText, jobDescription }, options =
         recommendations: [
           "Add missing job-critical skills where you have real experience.",
           "Tailor the summary to the target role.",
-          "Move the most relevant projects higher on the resume.",
+          roleAlignment < 0.5
+            ? "This role appears to be in a different domain, so add only truthful transferable experience."
+            : "Move the most relevant projects higher on the resume.",
         ],
         hiringProbability:
           matchPercentage >= 75 ? "Strong" : matchPercentage >= 50 ? "Moderate" : "Low",
