@@ -1,6 +1,6 @@
 # AI-Assisted Job Application Tracker
 
-A MERN + TypeScript job application tracker with JWT auth, a Kanban board, AI-assisted job description parsing, and tailored resume bullet suggestions.
+A MERN + JavaScript job application tracker with JWT auth, a Kanban board, AI-assisted job description parsing, and tailored resume bullet suggestions.
 
 ## What’s Included
 
@@ -12,6 +12,12 @@ A MERN + TypeScript job application tracker with JWT auth, a Kanban board, AI-as
 - AI parsing for company, role, skills, seniority, location, and salary range
 - AI-generated role-specific resume bullet suggestions with copy actions
 - Streamed AI resume suggestion drafting in the application modal
+- Resume analyzer with ATS score, missing skills, weak sections, and suggestions
+- Resume-to-job match scoring with missing skills and recommendations
+- Resume optimization suggestions for summary, projects, skills, and achievements
+- Cover letter generation in professional, startup, corporate, and friendly styles
+- Interview question generation and answer evaluation
+- AI chat assistant with conversation history, copy, regenerate, and clear actions
 - Search and status filters on the board
 - Overdue follow-up reminders for stale active applications
 - Dashboard summary stats
@@ -21,8 +27,8 @@ A MERN + TypeScript job application tracker with JWT auth, a Kanban board, AI-as
 
 ## Tech Stack
 
-- Frontend: React, TypeScript, React Query, Vite
-- Backend: Node.js, Express, TypeScript
+- Frontend: React, JavaScript, React Query, Vite
+- Backend: Node.js, Express, JavaScript
 - Database: MongoDB + Mongoose
 - Auth: JWT + bcryptjs
 - AI: OpenAI API with structured parsing via the service layer
@@ -38,6 +44,11 @@ Backend values:
 - `JWT_SECRET`
 - `OPENAI_API_KEY`
 - `OPENAI_MODEL`
+- `OPENAI_TIMEOUT_MS`
+- `OPENAI_MAX_RETRIES`
+- `OPENAI_INPUT_COST_PER_1M`
+- `OPENAI_OUTPUT_COST_PER_1M`
+- `AI_RATE_LIMIT_PER_MINUTE`
 - `CLIENT_ORIGIN`
 
 Frontend values:
@@ -68,10 +79,14 @@ Backend default URL: `http://localhost:5000`
 
 ## Core API Notes
 
-- AI logic lives in `backend/src/services/ai.service.ts`
+- AI logic lives in `backend/src/services/ai.service.js`
+- AI prompts live in `backend/src/services/ai.prompts.js`
+- AI usage and estimated cost tracking lives in `backend/src/services/aiUsage.service.js`
+- Resume and career AI tools live in `backend/src/services/aiCareer.service.js`
+- AI chat history lives in `backend/src/services/aiChat.service.js`
 - Auth restore endpoint: `GET /api/auth/me`
 - Applications support full CRUD plus `PATCH /api/applications/:id/status`
-- AI endpoints are protected and expect a logged-in user
+- AI endpoints are protected and expect a logged-in user, including `GET /api/ai/usage`
 
 ## Decisions Made
 
@@ -86,6 +101,5 @@ Backend default URL: `http://localhost:5000`
 Completed locally in this workspace:
 
 - `cd backend && npm run build`
-- `cd frontend && npm exec tsc -b`
 - `cd frontend && npm run lint`
 - `cd frontend && npm run build`
