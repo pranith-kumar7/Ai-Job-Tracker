@@ -203,6 +203,9 @@ const detectRoleFamily = (text) => {
   if (/(data analyst|business analyst|analytics|power bi|tableau|pandas|excel|sql)/i.test(lower)) {
     return "data";
   }
+  if (/(machine learning|ml engineer|ai engineer|ai\/ml|artificial intelligence|tensorflow|scikit|nlp|rag|llm)/i.test(lower)) {
+    return "ai-ml";
+  }
   if (/(frontend|backend|full stack|full-stack|mern|react|node|express|mongodb|developer|engineer)/i.test(lower)) {
     return "software";
   }
@@ -212,14 +215,118 @@ const detectRoleFamily = (text) => {
   if (/(devops|docker|kubernetes|terraform|ci\/cd|aws|linux)/i.test(lower)) {
     return "devops";
   }
-  if (/(machine learning|ml engineer|ai engineer|tensorflow|scikit|nlp|rag)/i.test(lower)) {
-    return "ai-ml";
-  }
-
   return "general";
 };
 
 const clampScore = (value) => Math.max(0, Math.min(100, Math.round(value)));
+
+const interviewQuestionBank = {
+  "ai-ml": {
+    technicalQuestions: [
+      "How would you choose an evaluation metric for an imbalanced classification problem?",
+      "Explain how you would detect and reduce overfitting in a machine learning model.",
+      "How do you approach data preprocessing, feature engineering, and train-test splitting?",
+      "How would you deploy a trained model behind an API and monitor its performance in production?",
+      "If an NLP model gives inconsistent outputs, how would you debug the pipeline?",
+    ],
+    behavioralQuestions: [
+      "Tell me about a time you improved a model, experiment, or data pipeline based on evidence.",
+      "Describe a time you explained a technical ML result to a non-technical stakeholder.",
+      "Tell me about a time your initial experiment failed and how you adjusted your approach.",
+    ],
+  },
+  data: {
+    technicalQuestions: [
+      "How would you clean and validate a messy dataset before analysis?",
+      "Write the SQL approach you would use to find month-over-month growth.",
+      "How do you decide which chart best communicates a business insight?",
+      "How would you investigate a sudden drop in a key dashboard metric?",
+      "Explain how you would design an A/B test and interpret the result.",
+    ],
+    behavioralQuestions: [
+      "Tell me about a time you found an insight from data that changed a decision.",
+      "Describe how you handle unclear requirements from business stakeholders.",
+      "Tell me about a time you caught a data quality issue before it caused confusion.",
+    ],
+  },
+  design: {
+    technicalQuestions: [
+      "How do you turn user research into wireframes and design decisions?",
+      "How would you structure a reusable design system in Figma?",
+      "How do you test whether a design is usable and accessible?",
+      "How would you handle conflicting feedback from product and engineering?",
+      "What information do you include when handing off designs to developers?",
+    ],
+    behavioralQuestions: [
+      "Tell me about a time user feedback changed your design direction.",
+      "Describe a time you defended a design decision with evidence.",
+      "Tell me about a time you simplified a confusing user flow.",
+    ],
+  },
+  devops: {
+    technicalQuestions: [
+      "How would you design a CI/CD pipeline for a Node.js application?",
+      "How do Docker images, containers, and registries fit into deployment?",
+      "How would you monitor application health and respond to an outage?",
+      "How would you manage secrets safely in production?",
+      "What would you check first if a deployment works locally but fails in cloud?",
+    ],
+    behavioralQuestions: [
+      "Tell me about a time you improved release reliability.",
+      "Describe a time you debugged a production or deployment issue.",
+      "Tell me about a time you automated a repetitive engineering task.",
+    ],
+  },
+  software: {
+    technicalQuestions: [
+      "How would you design a secure REST API for this product?",
+      "How do you handle authentication and authorization?",
+      "How would you debug a slow database query?",
+      "How would you structure reusable frontend components for this workflow?",
+      "How do you validate input and handle errors across frontend and backend?",
+    ],
+    behavioralQuestions: [
+      "Tell me about a time you improved an existing system.",
+      "Describe a time you handled ambiguity while building a feature.",
+      "Tell me about a conflict you resolved with a teammate.",
+    ],
+  },
+  general: {
+    technicalQuestions: [
+      "What are the most important technical skills for this role, and how have you used them?",
+      "Walk me through a project that is most relevant to this job description.",
+      "How would you approach learning an unfamiliar tool required by this role?",
+    ],
+    behavioralQuestions: [
+      "Tell me about a time you handled ambiguity.",
+      "Describe a time you improved an existing process.",
+      "Tell me about a conflict you resolved with a teammate.",
+    ],
+  },
+};
+
+const buildFallbackInterviewPrep = ({ jobDescription, company, role }) => {
+  const targetText = [role, jobDescription].filter(Boolean).join("\n");
+  const roleFamily = detectRoleFamily(targetText);
+  const questions = interviewQuestionBank[roleFamily] ?? interviewQuestionBank.general;
+  const targetRole = role || "this role";
+  const targetCompany = company || "this company";
+
+  return {
+    hrQuestions: [
+      `Tell me about yourself and the experience most relevant to ${targetRole}.`,
+      `Why are you interested in ${targetRole}?`,
+      "What kind of team environment helps you do your best work?",
+    ],
+    technicalQuestions: questions.technicalQuestions,
+    behavioralQuestions: questions.behavioralQuestions,
+    companySpecificQuestions: [
+      `What interests you about ${targetCompany}?`,
+      `How would your experience help you succeed as ${targetRole}?`,
+      `What would you want to learn first about ${targetCompany}'s product, users, and technical challenges?`,
+    ],
+  };
+};
 
 const makeUsageReporter = (feature, onUsage) => async (status, usage, errorMessage) => {
   if (typeof onUsage !== "function") {
@@ -417,27 +524,7 @@ export const generateInterviewPrep = async (
     userPayload: { resumeText, jobDescription, company, role },
     schema: interviewPrepSchema,
     onUsage: options.onUsage,
-    fallback: () => ({
-      hrQuestions: [
-        "Tell me about yourself.",
-        "Why are you interested in this role?",
-        "What kind of team environment helps you do your best work?",
-      ],
-      technicalQuestions: [
-        "How would you design a secure REST API for this product?",
-        "How do you handle authentication and authorization?",
-        "How would you debug a slow database query?",
-      ],
-      behavioralQuestions: [
-        "Tell me about a time you handled ambiguity.",
-        "Describe a time you improved an existing system.",
-        "Tell me about a conflict you resolved with a teammate.",
-      ],
-      companySpecificQuestions: [
-        `What interests you about ${company || "this company"}?`,
-        `How would your experience help you succeed as ${role || "this role"}?`,
-      ],
-    }),
+    fallback: () => buildFallbackInterviewPrep({ jobDescription, company, role }),
   });
 
 export const evaluateInterviewAnswer = async (
