@@ -5,7 +5,7 @@
   "type": "module",
   "main": "src/server.js",
   "scripts": {
-    "build": "echo \"No build step required\"",
+    "build": "node scripts/create-render-entry.js",
     "start": "node src/server.js",
     "test": "echo \"No tests configured\"",
     "dev": "node --watch src/server.js"

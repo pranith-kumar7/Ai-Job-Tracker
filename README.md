@@ -77,6 +77,22 @@ Frontend default URL: `http://localhost:5173`
 
 Backend default URL: `http://localhost:5000`
 
+## Deployment Notes
+
+Render backend:
+
+- Root directory: `backend`
+- Build command: `npm install && npm run build`
+- Start command: `npm run start`
+- The backend build also creates `dist/server.js` as a compatibility entry for older Render services that still point to `node dist/server.js`.
+
+Vercel frontend:
+
+- Root directory: `frontend`
+- Build command: `npm run build`
+- Output directory: `dist`
+- Set `VITE_API_BASE_URL` to your Render backend API URL.
+
 ## Core API Notes
 
 - AI logic lives in `backend/src/services/ai.service.js`
