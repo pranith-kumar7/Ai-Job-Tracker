@@ -36,7 +36,8 @@ const buildAuthResponse = (user) => {
 
 export const register = async (req, res) => {
   try {
-    const { email, password } = authSchema.parse(req.body);
+    const { email: rawEmail, password } = authSchema.parse(req.body);
+    const email = rawEmail.toLowerCase();
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -55,6 +56,9 @@ export const register = async (req, res) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ message: error.issues[0]?.message ?? "Invalid input" });
     }
+    if (error?.code === 11000) {
+      return res.status(409).json({ message: "User already exists" });
+    }
 
     return res.status(500).json({ message: "Server error" });
   }
@@ -62,7 +66,8 @@ export const register = async (req, res) => {
 
 export const login = async (req, res) => {
   try {
-    const { email, password } = authSchema.parse(req.body);
+    const { email: rawEmail, password } = authSchema.parse(req.body);
+    const email = rawEmail.toLowerCase();
 
     const user = await User.findOne({ email });
     if (!user) {
