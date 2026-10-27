@@ -39,3 +39,18 @@ test("resume suggestion fallback returns multiple role-specific suggestions", as
     else process.env.OPENAI_API_KEY = previousKey;
   }
 });
+
+test("long job-board intro produces a concise role title under the 160-character limit", async () => {
+  const previousKey = process.env.OPENAI_API_KEY;
+  delete process.env.OPENAI_API_KEY;
+  try {
+    const parsed = await parseJobDescription(
+      "Job Info This Site Engineering role within Nokia's Product Validation & Test (PV&T) R&D is responsible for developing and deploying optical test stations directly at manufacturing sites.\\nYour responsibilities\\nDesign and debug test stations."
+    );
+    assert.equal(parsed.role, "Site Engineering");
+    assert.ok(parsed.role.length <= 160);
+  } finally {
+    if (previousKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = previousKey;
+  }
+});
