@@ -7,7 +7,7 @@
   "scripts": {
     "build": "node scripts/create-render-entry.js",
     "start": "node src/server.js",
-    "test": "echo \"No tests configured\"",
+    "test": "node --test",
     "dev": "node --watch src/server.js"
   },
   "keywords": [],
