@@ -123,7 +123,7 @@ npm test
 npm run build
 ```
 
-The backend tests cover authentication middleware, AI input guarding, application-controller validation and user ownership. They use mocked model methods for controller tests, so they do not replace end-to-end tests against a real MongoDB instance.
+The backend tests cover authentication middleware, AI input guarding, application-controller validation and user ownership, AI fallback parsing/suggestions, and resume upload type validation. They use mocked model methods for controller tests, so they do not replace end-to-end tests against a real MongoDB instance.
 
 GitHub Actions runs backend tests/build and frontend lint/build for relevant pushes and pull requests. Check the [Actions tab](https://github.com/pranith-kumar7/Ai-Job-Tracker/actions) for the latest result before describing a commit as passing.
 
