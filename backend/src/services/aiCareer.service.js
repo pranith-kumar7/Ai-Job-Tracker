@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+import { getAiClient, getAiModel, getAiProvider } from "./aiProvider.js";
 import { zodResponseFormat } from "openai/helpers/zod";
 import { z } from "zod";
 import {
@@ -10,7 +10,6 @@ import {
   RESUME_OPTIMIZER_SYSTEM_PROMPT,
 } from "./ai.prompts.js";
 
-const DEFAULT_OPENAI_MODEL = "gpt-4o-mini";
 
 const resumeAnalysisSchema = z.object({
   atsScore: z.number().min(0).max(100),
@@ -57,19 +56,6 @@ const interviewEvaluationSchema = z.object({
   improvedAnswer: z.string().min(1),
 });
 
-const getOpenAIClient = () => {
-  if (!process.env.OPENAI_API_KEY) {
-    return null;
-  }
-
-  return new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-    timeout: Number.parseInt(process.env.OPENAI_TIMEOUT_MS ?? "30000", 10),
-    maxRetries: Number.parseInt(process.env.OPENAI_MAX_RETRIES ?? "1", 10),
-  });
-};
-
-const getOpenAIModel = () => process.env.OPENAI_MODEL ?? DEFAULT_OPENAI_MODEL;
 
 const uniqueStrings = (values) =>
   Array.from(new Set(values.map((value) => String(value).trim()).filter(Boolean)));
@@ -335,8 +321,8 @@ const makeUsageReporter = (feature, onUsage) => async (status, usage, errorMessa
 
   await onUsage({
     feature,
-    provider: status === "fallback" ? "fallback" : "openai",
-    model: getOpenAIModel(),
+    provider: status === "fallback" ? "fallback" : getAiProvider(),
+    model: getAiModel(),
     status,
     usage,
     errorMessage,
@@ -352,7 +338,7 @@ const runStructuredAI = async ({
   onUsage,
 }) => {
   const report = makeUsageReporter(feature, onUsage);
-  const client = getOpenAIClient();
+  const client = getAiClient();
 
   if (!client) {
     await report("fallback");
@@ -361,7 +347,7 @@ const runStructuredAI = async ({
 
   try {
     const completion = await client.chat.completions.parse({
-      model: getOpenAIModel(),
+      model: getAiModel(),
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: JSON.stringify(userPayload) },
