@@ -1,23 +1,9 @@
 import mongoose from "mongoose";
-import OpenAI from "openai";
+import { getAiClient, getAiModel, getAiProvider } from "./aiProvider.js";
 import { AiChat } from "../models/aiChat.model.js";
 import { AI_CHAT_SYSTEM_PROMPT } from "./ai.prompts.js";
 
-const DEFAULT_OPENAI_MODEL = "gpt-4o-mini";
 
-const getOpenAIClient = () => {
-  if (!process.env.OPENAI_API_KEY) {
-    return null;
-  }
-
-  return new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-    timeout: Number.parseInt(process.env.OPENAI_TIMEOUT_MS ?? "30000", 10),
-    maxRetries: Number.parseInt(process.env.OPENAI_MAX_RETRIES ?? "1", 10),
-  });
-};
-
-const getOpenAIModel = () => process.env.OPENAI_MODEL ?? DEFAULT_OPENAI_MODEL;
 
 const makeTitle = (message) => {
   const title = String(message).trim().slice(0, 60);
@@ -45,13 +31,13 @@ const fallbackChatResponse = (message) =>
   ].join("\n");
 
 const callChatModel = async (messages, onUsage) => {
-  const client = getOpenAIClient();
+  const client = getAiClient();
 
   if (!client) {
     await onUsage?.({
       feature: "ai_chat",
       provider: "fallback",
-      model: getOpenAIModel(),
+      model: getAiModel(),
       status: "fallback",
     });
     return fallbackChatResponse(messages.at(-1)?.content);
@@ -59,7 +45,7 @@ const callChatModel = async (messages, onUsage) => {
 
   try {
     const completion = await client.chat.completions.create({
-      model: getOpenAIModel(),
+      model: getAiModel(),
       messages: [
         { role: "system", content: AI_CHAT_SYSTEM_PROMPT },
         ...messages.map((item) => ({
@@ -71,8 +57,8 @@ const callChatModel = async (messages, onUsage) => {
 
     await onUsage?.({
       feature: "ai_chat",
-      provider: "openai",
-      model: getOpenAIModel(),
+      provider: getAiProvider(),
+      model: getAiModel(),
       status: "success",
       usage: completion.usage,
     });
@@ -83,8 +69,8 @@ const callChatModel = async (messages, onUsage) => {
     console.warn(`[AI] chat failed; using fallback. ${message}`);
     await onUsage?.({
       feature: "ai_chat",
-      provider: "openai",
-      model: getOpenAIModel(),
+      provider: getAiProvider(),
+      model: getAiModel(),
       status: "fallback",
       errorMessage: message,
     });
