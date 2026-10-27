@@ -197,8 +197,8 @@ const getSectionText = (text, headings) => {
 };
 
 const isTermMentioned = (text, term) => {
-  const escaped = term.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&").replace(/\\s+/g, "\\\\s+");
-  const pattern = new RegExp(`(^|[^A-Za-z0-9+#.])${escaped}(?=$|[^A-Za-z0-9+#.])`, "i");
+  const escaped = term.replace(/[.*+?^\${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
+  const pattern = new RegExp(\`(^|[^A-Za-z0-9+#.])\${escaped}(?=$|[^A-Za-z0-9+#.])\`, "i");
   return pattern.test(text);
 };
 
