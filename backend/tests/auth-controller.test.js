@@ -1,4 +1,4 @@
-import test, { beforeEach } from "node:test";
+import test, { after, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import bcrypt from "bcryptjs";
 import { User } from "../src/models/user.model.js";
@@ -63,8 +63,7 @@ test("duplicate-key race returns conflict", async () => {
   assert.equal(response.statusCode, 409);
 });
 
-test("restore model methods after tests", () => {
+after(() => {
   User.findOne = originalFindOne;
   User.create = originalCreate;
-  assert.equal(typeof User.findOne, "function");
 });
