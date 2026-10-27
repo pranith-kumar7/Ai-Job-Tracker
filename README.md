@@ -31,7 +31,7 @@ A MERN + JavaScript job application tracker with JWT auth, a Kanban board, AI-as
 - Backend: Node.js, Express, JavaScript
 - Database: MongoDB + Mongoose
 - Auth: JWT + bcryptjs
-- AI: OpenAI API with structured parsing via the service layer
+- AI: OpenAI-compatible provider configuration for OpenAI or OpenRouter
 
 ## Environment Variables
 
@@ -42,7 +42,12 @@ Backend values:
 - `PORT`
 - `MONGO_URI`
 - `JWT_SECRET`
-- `OPENAI_API_KEY`
+- `AI_PROVIDER` (`openai` or `openrouter`)
+- `OPENROUTER_API_KEY` (when using OpenRouter)
+- `OPENROUTER_MODEL` (when using OpenRouter; default `openai/gpt-4o-mini`)
+- `OPENROUTER_SITE_URL` (optional)
+- `OPENROUTER_APP_NAME` (optional)
+- `OPENAI_API_KEY` (when using OpenAI)
 - `OPENAI_MODEL`
 - `OPENAI_TIMEOUT_MS`
 - `OPENAI_MAX_RETRIES`
@@ -54,6 +59,10 @@ Backend values:
 Frontend values:
 
 - `VITE_API_BASE_URL`
+
+## Configure OpenRouter
+
+To use OpenRouter, set `AI_PROVIDER=openrouter` and `OPENROUTER_API_KEY` in your backend `.env`. Choose a model available to your OpenRouter account with `OPENROUTER_MODEL`. The same provider configuration is used by job-description parsing, resume suggestions, resume analysis/optimization, cover letters, interview tools, and AI chat. Keep API keys on the backend only; never add them to frontend environment variables or commit them.
 
 ## How To Run
 
