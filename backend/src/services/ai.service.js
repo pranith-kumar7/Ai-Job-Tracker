@@ -539,6 +539,10 @@ export const parseJobDescription = async (jdText, options = {}) => {
     const fallbackParsed = buildFallbackParse(jdText);
     const result = {
       ...parsed,
+      // Keep fields that are later validated as short form inputs concise.
+      company: (parsed.company || fallbackParsed.company).slice(0, 160),
+      role: cleanRoleTitle(parsed.role || fallbackParsed.role),
+      location: (parsed.location || fallbackParsed.location).slice(0, 160),
       seniority:
         parsed.seniority !== "Not specified" ? parsed.seniority : fallbackParsed.seniority,
       experience:
