@@ -118,6 +118,40 @@ const getIntegerEnv = (key, fallback, min, max) => {
   return Math.min(Math.max(value, min), max);
 };
 
+const DEFAULT_FREE_FALLBACK_MODELS = [
+  "nvidia/nemotron-3-super-120b-a12b:free",
+  "nvidia/nemotron-3-ultra-550b-a55b:free",
+  "cohere/north-mini-code:free",
+];
+
+const getAiFallbackOptions = (primaryModel) => {
+  if (getAiProvider() !== "openrouter") {
+    return {};
+  }
+
+  const configuredModels = (
+    process.env.OPENROUTER_FALLBACK_MODELS ??
+    DEFAULT_FREE_FALLBACK_MODELS.join(",")
+  )
+    .split(",")
+    .map((model) => model.trim())
+    .filter(Boolean);
+
+  const freeOnly = process.env.AI_FREE_ONLY?.trim().toLowerCase() !== "false";
+  const fallbackModels = uniqueStrings(configuredModels).filter(
+    (model) =>
+      model !== primaryModel &&
+      (!freeOnly || model.endsWith(":free"))
+  );
+
+  if (fallbackModels.length === 0) {
+    return {};
+  }
+
+  // OpenRouter model-level failover: only explicitly configured free variants
+  // are eligible when AI_FREE_ONLY is enabled.
+  return { extra_body: { models: fallbackModels } };
+};
 
 const logAiFallback = (operation, error) => {
   const reason =
@@ -496,6 +530,7 @@ export const parseJobDescription = async (jdText, options = {}) => {
   try {
     const completion = await client.chat.completions.parse({
       model,
+      ...getAiFallbackOptions(model),
       messages: [
         {
           role: "system",
@@ -605,6 +640,7 @@ export const generateResumeSuggestions = async (rawInput, options = {}) => {
   try {
     const completion = await client.chat.completions.parse({
       model,
+      ...getAiFallbackOptions(model),
       messages: [
         {
           role: "system",
@@ -677,6 +713,7 @@ export const streamResumeSuggestions = async (rawInput, onChunk, options = {}) =
   try {
     const stream = await client.chat.completions.create({
       model,
+      ...getAiFallbackOptions(model),
       stream: true,
       stream_options: {
         include_usage: true,
