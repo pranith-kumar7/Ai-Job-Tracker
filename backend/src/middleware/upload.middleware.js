@@ -6,16 +6,17 @@ export const resumeUpload = multer({
     fileSize: 5 * 1024 * 1024,
   },
   fileFilter: (_req, file, callback) => {
-    const allowedTypes = ["application/pdf", "text/plain"];
+    const extension = file.originalname?.toLowerCase().split(".").pop();
+    const matchingExtensions = {
+      "application/pdf": "pdf",
+      "text/plain": "txt",
+    };
 
-    if (
-      allowedTypes.includes(file.mimetype) ||
-      file.originalname?.toLowerCase().endsWith(".txt")
-    ) {
+    if (matchingExtensions[file.mimetype] === extension) {
       callback(null, true);
       return;
     }
 
-    callback(new Error("Only PDF and TXT resumes are supported"));
+    callback(new Error("Only matching PDF and TXT resume files are supported"));
   },
 });
