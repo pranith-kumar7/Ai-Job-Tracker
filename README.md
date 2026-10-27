@@ -112,6 +112,21 @@ Vercel frontend:
 - Resume suggestions are generated after parsing and can be refreshed manually from the application modal.
 - Streaming suggestions use a backend streamed endpoint so the frontend can render AI output progressively while the final bullet list is still being assembled.
 
+## Automated tests and CI
+
+Run backend tests locally:
+
+```bash
+cd backend
+npm ci
+npm test
+npm run build
+```
+
+The backend tests cover authentication middleware, AI input guarding, authentication-controller validation, and application-controller validation and user ownership. They use mocked model methods for controller tests, so they do not replace end-to-end tests against a real MongoDB instance.
+
+GitHub Actions runs backend tests/build and frontend lint/build for relevant pushes and pull requests. Check the [Actions tab](https://github.com/pranith-kumar7/Ai-Job-Tracker/actions) for the latest result before describing a commit as passing.
+
 ## Verification
 
 Completed locally in this workspace:
