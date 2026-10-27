@@ -197,11 +197,7 @@ const getSectionText = (text, headings) => {
 };
 
 const isTermMentioned = (text, term) => {
-  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\const collectSkills = (text) => {
-  const lowerText = text.toLowerCase();
-
-  return skillCatalog.filter((skill) => lowerText.includes(skill.toLowerCase()));
-};").replace(/\\s+/g, "\\\\s+");
+  const escaped = term.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&").replace(/\\s+/g, "\\\\s+");
   const pattern = new RegExp(`(^|[^A-Za-z0-9+#.])${escaped}(?=$|[^A-Za-z0-9+#.])`, "i");
   return pattern.test(text);
 };
