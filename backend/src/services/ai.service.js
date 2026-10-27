@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+import { getAiClient, getAiModel, getAiProvider } from "./aiProvider.js";
 import { zodResponseFormat } from "openai/helpers/zod";
 import { z } from "zod";
 import {
@@ -7,7 +7,6 @@ import {
   RESUME_SUGGESTIONS_SYSTEM_PROMPT,
 } from "./ai.prompts.js";
 
-const DEFAULT_OPENAI_MODEL = "gpt-4o-mini";
 const DEFAULT_OPENAI_TIMEOUT_MS = 30000;
 const DEFAULT_OPENAI_MAX_RETRIES = 1;
 
@@ -119,29 +118,6 @@ const getIntegerEnv = (key, fallback, min, max) => {
   return Math.min(Math.max(value, min), max);
 };
 
-const getOpenAIClient = () => {
-  if (!process.env.OPENAI_API_KEY) {
-    return null;
-  }
-
-  return new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-    timeout: getIntegerEnv(
-      "OPENAI_TIMEOUT_MS",
-      DEFAULT_OPENAI_TIMEOUT_MS,
-      5000,
-      120000
-    ),
-    maxRetries: getIntegerEnv(
-      "OPENAI_MAX_RETRIES",
-      DEFAULT_OPENAI_MAX_RETRIES,
-      0,
-      5
-    ),
-  });
-};
-
-const getOpenAIModel = () => process.env.OPENAI_MODEL ?? DEFAULT_OPENAI_MODEL;
 
 const logAiFallback = (operation, error) => {
   const reason =
@@ -157,8 +133,8 @@ const reportUsage = async (onUsage, usagePayload) => {
 
   try {
     await onUsage({
-      provider: "openai",
-      model: getOpenAIModel(),
+      provider: getAiProvider(),
+      model: getAiModel(),
       ...usagePayload,
     });
   } catch (error) {
@@ -501,7 +477,7 @@ const extractSuggestionsFromText = (content) => {
 
 export const parseJobDescription = async (jdText, options = {}) => {
   const { onUsage } = options;
-  const client = getOpenAIClient();
+  const client = getAiClient();
 
   if (!client) {
     await reportUsage(onUsage, {
@@ -512,7 +488,7 @@ export const parseJobDescription = async (jdText, options = {}) => {
     return buildFallbackParse(jdText);
   }
 
-  const model = getOpenAIModel();
+  const model = getAiModel();
 
   try {
     const completion = await client.chat.completions.parse({
@@ -585,7 +561,7 @@ export const parseJobDescription = async (jdText, options = {}) => {
 export const generateResumeSuggestions = async (rawInput, options = {}) => {
   const { onUsage } = options;
   const input = suggestionInputSchema.parse(rawInput);
-  const client = getOpenAIClient();
+  const client = getAiClient();
 
   if (!client) {
     await reportUsage(onUsage, {
@@ -596,7 +572,7 @@ export const generateResumeSuggestions = async (rawInput, options = {}) => {
     return buildFallbackSuggestions(input);
   }
 
-  const model = getOpenAIModel();
+  const model = getAiModel();
 
   try {
     const completion = await client.chat.completions.parse({
@@ -648,7 +624,7 @@ export const generateResumeSuggestions = async (rawInput, options = {}) => {
 export const streamResumeSuggestions = async (rawInput, onChunk, options = {}) => {
   const { onUsage } = options;
   const input = suggestionInputSchema.parse(rawInput);
-  const client = getOpenAIClient();
+  const client = getAiClient();
 
   if (!client) {
     const fallback = buildFallbackSuggestions(input);
@@ -668,7 +644,7 @@ export const streamResumeSuggestions = async (rawInput, onChunk, options = {}) =
     return fallback;
   }
 
-  const model = getOpenAIModel();
+  const model = getAiModel();
 
   try {
     const stream = await client.chat.completions.create({
