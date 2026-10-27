@@ -196,10 +196,13 @@ const getSectionText = (text, headings) => {
   return collected.join("\n");
 };
 
+const normalizeSkillText = (value) =>
+  value.toLowerCase().replace(/[^a-z0-9+#.]+/g, " ").replace(/\s+/g, " ").trim();
+
 const isTermMentioned = (text, term) => {
-  const escaped = term.replace(/[.*+?^\${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
-  const pattern = new RegExp(\`(^|[^A-Za-z0-9+#.])\${escaped}(?=$|[^A-Za-z0-9+#.])\`, "i");
-  return pattern.test(text);
+  const normalizedText = normalizeSkillText(text);
+  const normalizedTerm = normalizeSkillText(term);
+  return ` ${normalizedText} `.includes(` ${normalizedTerm} `);
 };
 
 const collectSkills = (text) =>
