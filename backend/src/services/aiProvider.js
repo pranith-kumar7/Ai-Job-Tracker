@@ -1,17 +1,33 @@
 import OpenAI from "openai";
 
 const DEFAULT_OPENAI_MODEL = "gpt-4o-mini";
-const DEFAULT_OPENROUTER_MODEL = "openai/gpt-4o-mini";
+const DEFAULT_OPENROUTER_MODEL = "recursive/flint-v1.0:free";
 
-export const getAiProvider = () =>
-  process.env.AI_PROVIDER?.trim().toLowerCase() === "openrouter"
-    ? "openrouter"
-    : "openai";
+export const getAiProvider = () => {
+  // OpenRouter is the safe default. OpenAI is used only when explicitly selected.
+  return process.env.AI_PROVIDER?.trim().toLowerCase() === "openai"
+    ? "openai"
+    : "openrouter";
+};
 
-export const getAiModel = () =>
-  getAiProvider() === "openrouter"
-    ? process.env.OPENROUTER_MODEL ?? DEFAULT_OPENROUTER_MODEL
-    : process.env.OPENAI_MODEL ?? DEFAULT_OPENAI_MODEL;
+export const getAiModel = () => {
+  if (getAiProvider() === "openai") {
+    return process.env.OPENAI_MODEL?.trim() || DEFAULT_OPENAI_MODEL;
+  }
+
+  const configuredModel = process.env.OPENROUTER_MODEL?.trim();
+  if (configuredModel?.endsWith(":free")) {
+    return configuredModel;
+  }
+
+  if (configuredModel) {
+    console.warn(
+      `[AI] Ignoring OpenRouter model "${configuredModel}" because free-only mode requires a model ID ending in ":free". Using ${DEFAULT_OPENROUTER_MODEL}.`
+    );
+  }
+
+  return DEFAULT_OPENROUTER_MODEL;
+};
 
 export const getAiClient = () => {
   const provider = getAiProvider();
