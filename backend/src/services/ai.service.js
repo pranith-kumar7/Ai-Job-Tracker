@@ -196,11 +196,18 @@ const getSectionText = (text, headings) => {
   return collected.join("\n");
 };
 
-const collectSkills = (text) => {
+const isTermMentioned = (text, term) => {
+  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\const collectSkills = (text) => {
   const lowerText = text.toLowerCase();
 
   return skillCatalog.filter((skill) => lowerText.includes(skill.toLowerCase()));
+};").replace(/\\s+/g, "\\\\s+");
+  const pattern = new RegExp(`(^|[^A-Za-z0-9+#.])${escaped}(?=$|[^A-Za-z0-9+#.])`, "i");
+  return pattern.test(text);
 };
+
+const collectSkills = (text) =>
+  skillCatalog.filter((skill) => isTermMentioned(text, skill));
 
 const cleanListItem = (value) =>
   value
@@ -434,22 +441,19 @@ const buildFallbackParse = (jdText) => {
 
 const buildFallbackSuggestions = (input) => {
   const primarySkills = uniqueStrings(input.requiredSkills ?? []).slice(0, 4);
-  const bonusSkills = uniqueStrings(input.niceToHaveSkills ?? []).slice(0, 2);
-  const company = input.company ? ` for ${input.company}` : "";
   const skillList =
-    primarySkills.length > 0 ? primarySkills.join(", ") : "modern product engineering tools";
-  const locationContext = input.location
-    ? ` across ${input.location} stakeholders`
-    : " across cross-functional stakeholders";
-  const bonusSkillText =
-    bonusSkills.length > 0 ? `, with bonus exposure to ${bonusSkills.join(" and ")}` : "";
+    primarySkills.length > 0 ? primarySkills.join(", ") : "[relevant skill from the job description]";
+  const primarySkill = primarySkills[0] ?? "[relevant skill]";
+  const role = input.role.trim();
 
+  // The JD describes the employer's needs, not the candidate's work history.
+  // Keep fallback suggestions as editable templates rather than invented achievements.
   return [
-    `Delivered ${input.role} initiatives${company} using ${skillList}, translating business requirements into polished, production-ready features.`,
-    `Built and iterated on user-facing workflows with strong ownership of code quality, performance, and maintainability${bonusSkillText}.`,
-    `Partnered with product, design, and engineering teams${locationContext} to scope features, ship on time, and resolve release blockers quickly.`,
-    `Improved reliability by documenting implementation decisions, testing critical flows, and refining handoffs around ${input.role.toLowerCase()} work.`,
-  ].slice(0, 4);
+    `For the ${role} role: Built [project or feature you actually implemented] using ${skillList}; describe the functionality you personally delivered.`,
+    `Applied ${primarySkill} in [your real project or coursework] to implement [specific task]; include only results you can explain and verify.`,
+    `Tested or debugged [a real feature or issue] in [project], using [tool or method]; describe how you confirmed the fix worked.`,
+    `Documented [an actual technical decision or workflow] for [project] to make the implementation easier to understand or maintain.`,
+  ];
 };
 
 const buildSuggestionPrompt = (input) =>
@@ -513,27 +517,52 @@ export const parseJobDescription = async (jdText, options = {}) => {
     }
 
     const fallbackParsed = buildFallbackParse(jdText);
+    const normalizedJd = normalizeText(jdText).toLowerCase();
+    const parsedCompany = parsed.company?.trim();
+    const parsedRole = cleanRoleTitle(parsed.role || fallbackParsed.role);
+    const parsedRequiredSkills = uniqueStrings(parsed.requiredSkills).filter((skill) =>
+      isTermMentioned(normalizedJd, skill)
+    );
+    const parsedNiceToHaveSkills = uniqueStrings(parsed.niceToHaveSkills).filter(
+      (skill) =>
+        isTermMentioned(normalizedJd, skill) &&
+        !parsedRequiredSkills.includes(skill)
+    );
     const result = {
       ...parsed,
-      // Keep fields that are later validated as short form inputs concise.
-      company: (parsed.company || fallbackParsed.company).slice(0, 160),
-      role: cleanRoleTitle(parsed.role || fallbackParsed.role),
-      location: (parsed.location || fallbackParsed.location).slice(0, 160),
+      // Keep short form fields concise and prevent unsupported AI guesses.
+      company: (
+        parsedCompany && normalizedJd.includes(parsedCompany.toLowerCase())
+          ? parsedCompany
+          : fallbackParsed.company
+      ).slice(0, 160),
+      role: isTermMentioned(normalizedJd, parsedRole)
+        ? parsedRole
+        : cleanRoleTitle(fallbackParsed.role),
+      location:
+        parsed.location !== "Not specified" &&
+        isTermMentioned(normalizedJd, parsed.location)
+          ? parsed.location.slice(0, 160)
+          : fallbackParsed.location,
       seniority:
         parsed.seniority !== "Not specified" ? parsed.seniority : fallbackParsed.seniority,
       experience:
         parsed.experience !== "Not specified" ? parsed.experience : fallbackParsed.experience,
-      location:
-        parsed.location !== "Not specified" ? parsed.location : fallbackParsed.location,
       salaryRange:
-        parsed.salaryRange !== "Not specified"
+        parsed.salaryRange !== "Not specified" &&
+        isTermMentioned(normalizedJd, parsed.salaryRange)
           ? parsed.salaryRange
           : fallbackParsed.salaryRange,
-      jdLink: parsed.jdLink !== "Not specified" ? parsed.jdLink : fallbackParsed.jdLink,
-      requiredSkills: uniqueStrings(parsed.requiredSkills),
-      niceToHaveSkills: uniqueStrings(parsed.niceToHaveSkills).filter(
-        (skill) => !parsed.requiredSkills.includes(skill)
-      ),
+      // URLs must come from the pasted JD, never from a model guess.
+      jdLink: fallbackParsed.jdLink,
+      requiredSkills:
+        parsedRequiredSkills.length > 0
+          ? parsedRequiredSkills
+          : fallbackParsed.requiredSkills,
+      niceToHaveSkills:
+        parsedNiceToHaveSkills.length > 0
+          ? parsedNiceToHaveSkills
+          : fallbackParsed.niceToHaveSkills,
       responsibilities: uniqueStrings(parsed.responsibilities),
       benefits: uniqueStrings(parsed.benefits),
     };
