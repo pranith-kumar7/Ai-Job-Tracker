@@ -54,3 +54,56 @@ test("long job-board intro produces a concise role title under the 160-character
     else process.env.OPENAI_API_KEY = previousKey;
   }
 });
+
+
+test("fallback resume suggestions use honest editable templates instead of invented achievements", async () => {
+  const previousProvider = process.env.AI_PROVIDER;
+  const previousOpenAiKey = process.env.OPENAI_API_KEY;
+  const previousOpenRouterKey = process.env.OPENROUTER_API_KEY;
+  process.env.AI_PROVIDER = "openai";
+  delete process.env.OPENAI_API_KEY;
+  delete process.env.OPENROUTER_API_KEY;
+  try {
+    const suggestions = await generateResumeSuggestions({
+      role: "Site Engineering",
+      company: "Nokia",
+      requiredSkills: ["Express", "Go", "Git"],
+      location: "Hybrid",
+    });
+    assert.equal(suggestions.length, 4);
+    assert.ok(suggestions.every((item) => item.includes("[")));
+    assert.ok(suggestions.every((item) => !/production-ready|partnered with|shipped on time/i.test(item)));
+    assert.ok(suggestions[0].includes("Site Engineering"));
+  } finally {
+    if (previousProvider === undefined) delete process.env.AI_PROVIDER;
+    else process.env.AI_PROVIDER = previousProvider;
+    if (previousOpenAiKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = previousOpenAiKey;
+    if (previousOpenRouterKey === undefined) delete process.env.OPENROUTER_API_KEY;
+    else process.env.OPENROUTER_API_KEY = previousOpenRouterKey;
+  }
+});
+
+test("fallback skill extraction does not match short skill names inside unrelated words", async () => {
+  const previousProvider = process.env.AI_PROVIDER;
+  const previousOpenAiKey = process.env.OPENAI_API_KEY;
+  const previousOpenRouterKey = process.env.OPENROUTER_API_KEY;
+  process.env.AI_PROVIDER = "openai";
+  delete process.env.OPENAI_API_KEY;
+  delete process.env.OPENROUTER_API_KEY;
+  try {
+    const parsed = await parseJobDescription(
+      "Site Engineering role. The team is going to validate optical test stations. Responsibilities: debug test equipment."
+    );
+    assert.ok(!parsed.requiredSkills.includes("Go"));
+    assert.ok(!parsed.requiredSkills.includes("Express"));
+    assert.ok(!parsed.requiredSkills.includes("Git"));
+  } finally {
+    if (previousProvider === undefined) delete process.env.AI_PROVIDER;
+    else process.env.AI_PROVIDER = previousProvider;
+    if (previousOpenAiKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = previousOpenAiKey;
+    if (previousOpenRouterKey === undefined) delete process.env.OPENROUTER_API_KEY;
+    else process.env.OPENROUTER_API_KEY = previousOpenRouterKey;
+  }
+});
