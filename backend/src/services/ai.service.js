@@ -366,19 +366,32 @@ const looksLikeRole = (line) => {
   ].some((keyword) => lower.includes(keyword));
 };
 
+const cleanRoleTitle = (value) => {
+  const role = value
+    .split(/[.!?\n]/, 1)[0]
+    .replace(/^job info\s+/i, "")
+    .trim();
+
+  // Job boards sometimes put a whole introductory sentence on the first line.
+  const roleWithinMatch = role.match(/^this\s+(.+?)\s+role\s+within\b/i);
+  if (roleWithinMatch?.[1]) {
+    return roleWithinMatch[1].trim().slice(0, 160);
+  }
+
+  return role.slice(0, 160);
+};
+
 const extractRole = (text) => {
   const explicitRole = findFirstMatch(text, [
-    /role\s*[:\-]\s*([^\n]+)/i,
-    /title\s*[:\-]\s*([^\n]+)/i,
-    /position\s*[:\-]\s*([^\n]+)/i,
+    /(?:job title|role|title|position)\s*[:\-]\s*([^\n]+)/i,
   ]);
 
   if (explicitRole) {
-    return explicitRole;
+    return cleanRoleTitle(explicitRole);
   }
 
   const inferredRole = linesFromText(text).find(looksLikeRole);
-  return inferredRole ?? "Unknown role";
+  return inferredRole ? cleanRoleTitle(inferredRole) : "Unknown role";
 };
 
 const buildFallbackParse = (jdText) => {
